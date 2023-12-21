@@ -500,11 +500,11 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                   ),
 
                   Padding(
-                    padding:  EdgeInsets.only(top:screenHeight*0.05),
+                    padding:  EdgeInsets.only(top:screenHeight*0.05,bottom:screenHeight*0.1 ),
                     child: Center(
                       child: Container(
                         width: screenWidth*0.9,
-                        height: screenHeight*0.07,
+                        // height: screenHeight*0.,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(screenWidth*0.1), // Adjust the value as needed
                           color: Colors.grey.shade700, // Background color for the collapsed state
@@ -518,7 +518,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                           backgroundColor: Colors.black12, // Background color for the expanded state
                           children: [
                             Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16.0),
+                              padding: EdgeInsets.only(top:screenHeight*0.01,bottom:screenHeight*0.01),
                               child: Text(
                                 widget.product.description,
                                 style: TextStyle(color: Colors.grey.shade300, fontSize: screenHeight*0.02),
