@@ -12,7 +12,8 @@ class ProductDetailsPage extends StatefulWidget {
 }
 
 class _ProductDetailsPageState extends State<ProductDetailsPage> {
-  int selectedVariationIndex = 0; // Track the selected variation index
+  int selectedVariationIndex = 0;
+  bool zero=false;// Track the selected variation index
   int selectedColorIndex = -1;
   late List<ProductPropertyAndValue> availableProperties;
 
@@ -71,7 +72,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     widget.product.availableProperties.forEach((property) {
       if (valuesMap.containsKey(property.property)) {
         if (!valuesMap[property.property]!.contains(property.value)&
-            !valuesMap[property.property]!.contains(property.value.toUpperCase())) {
+        !valuesMap[property.property]!.contains(property.value.toUpperCase())) {
           valuesMap[property.property]!.add(property.value);
         }
       }
@@ -83,6 +84,26 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
   Color getColorFromHex(String colorHex) {
     String hex = colorHex.startsWith('#') ? colorHex : '0xFF$colorHex';
     return Color(int.parse(hex.replaceAll('#', '0x')));
+  }
+
+  List<ProductVariation> getVariantsByColor(int colorIndex) {
+    final selectedColor = availableValues['Color']?[colorIndex] ?? '';
+    return widget.product.variations.where((variant) {
+      return variant.propertiesAndValues.any((property) =>
+      property.property.toLowerCase() == 'color' &&
+          property.value.toLowerCase() == selectedColor.toLowerCase());
+    }).toList();
+  }
+  int selectedImageIndex = 0;
+  int selectedVariantImageIndex = 0;
+
+  PageController _pageController = PageController(viewportFraction: 0.7);
+  // int selectedImageIndex = 0; // Track the selected image index
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -114,237 +135,405 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Display product image and name
+                  // Horizontal scrollable container for variant images
                   Container(
-                    height: 200,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      image: DecorationImage(
-                        image: NetworkImage(widget.product.imagepath),
-                        fit: BoxFit.cover,
-                      ),
+                    height: screenHeight * 0.3,
+                    width: screenWidth * 1,
+                    child: PageView.builder(
+                      itemCount: widget.product
+                          .variations[selectedVariationIndex].productVarientImages.length,
+                      controller: _pageController,
+                      onPageChanged: (index) {
+                        setState(() {
+                          selectedImageIndex = index;
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        final imageUrl = widget.product
+                            .variations[selectedVariationIndex].productVarientImages[index];
+                        return Container(
+                          margin: EdgeInsets.symmetric(horizontal: 4),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8.0),
+                            child: Image.network(
+                              imageUrl,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      for (int i = 0;
+                      i <
+                          widget.product
+                              .variations[selectedVariationIndex]
+                              .productVarientImages.length;
+                      i++)
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedImageIndex = i;
+                              _pageController.animateToPage(
+                                selectedImageIndex,
+                                duration: Duration(milliseconds: 300),
+                                curve: Curves.ease,
+                              );
+                            });
+                          },
+                          child: Container(
+                            margin: EdgeInsets.all(8),
+                            width: screenWidth *
+                                0.1, // Adjust the width as needed
+                            height: screenHeight *
+                                0.08, // Adjust the height as needed
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: selectedImageIndex == i
+                                    ? Colors.lightGreenAccent.shade700
+                                    : Colors.transparent, // Toggle border color
+                                width: 2.0,
+                              ),
+                            ),
+                            child: Image.network(
+                              widget.product.variations[selectedVariationIndex]
+                                  .productVarientImages[i],
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                   SizedBox(height: screenHeight*0.02),
-                  Text(widget.product.name, style: TextStyle(color: Colors.white, fontSize: screenHeight*0.03),),
+                  Text(widget.product.name, style: TextStyle( color: Colors.grey.shade200, fontSize: screenHeight*0.03),),
+                  SizedBox(height: screenHeight*0.017),
+                  Text(
+                    'EGP ${widget.product.variations[selectedVariationIndex].price.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: screenHeight*0.023,
+                      color: Colors.grey.shade400,
+                    ),
+                  ),
 
 
                   Padding(
                     padding: EdgeInsets.only(bottom: screenHeight*0.02, top:screenHeight*0.02, left: screenHeight*0.01),
                     child: availableProperties.any((property) => property.property == 'Color')
                         ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                      Text(
-                      'Colors:', // Or use the appropriate label
-                      style: TextStyle(fontSize: screenHeight*0.025, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        for (int i = 0; i < (availableValues['Color'] ?? []).length; i++)
-                        // for (final colorHex in availableValues['Color'] ?? [])
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                selectedColorIndex = i; // Update selected index
-                              });
-                            },
-
-                            child: Container(
-
-                              margin: EdgeInsets.symmetric(horizontal: 8.0),
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: getColorFromHex(availableValues['Color']?[i] ?? ''),
-                                border: Border.all(
-                                  color: selectedColorIndex == i ? Colors.green : Colors.grey, // Toggle border color
-                                  width: 2.0,
-                                ),
-                              ),
-                            ),
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Colors:', // Or use the appropriate label
+                            style: TextStyle(fontSize: screenHeight*0.025, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
-                      ],
-                    ),
-                    ]
+                          SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              for (int i = 0; i < (availableValues['Color'] ?? []).length; i++)
+                              // for (final colorHex in availableValues['Color'] ?? [])
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      selectedColorIndex = i;
+                                      final variants = getVariantsByColor(selectedColorIndex);
+                                      if (variants.isNotEmpty) {
+                                        // Update selected variation index based on the filtered variants
+                                        selectedVariationIndex = widget.product.variations.indexOf(variants[0]);
+                                      }
+                                    });
+                                  },
+
+                                  child: Container(
+
+                                    margin: EdgeInsets.symmetric(horizontal: 8.0),
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: getColorFromHex(availableValues['Color']?[i] ?? ''),
+                                      border: Border.all(
+                                        color: selectedColorIndex == i ? Colors.green : Colors.grey, // Toggle border color
+                                        width: 2.0,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ]
                     ):SizedBox.shrink(),
                   ),
 
-// Adding buttons for sizes
-                  Padding(
-                    padding: EdgeInsets.only(bottom: screenHeight*0.02, top:screenHeight*0.02, left: screenHeight*0.01),
-                    child: availableProperties.any((property) => property.property == 'Size')
-                        ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                      Text(
-                      'Sizes:', // Or use the appropriate label
-                      style: TextStyle(fontSize: screenHeight*0.025, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        for (final size in availableValues['Size'] ?? [])
-                          GestureDetector(
-                            onTap: () {
-                              // Handle size button tap
-                            },
-                            child: Container(
-                              margin: EdgeInsets.symmetric(horizontal: 8.0),
-                              padding: EdgeInsets.all(12.0),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: Colors.grey,
-                                  width: 2.0,
-                                ),
-                                borderRadius: BorderRadius.circular(8.0),
-                              ),
-                              child: Text(size, style: TextStyle(color: Colors.white)),
-                            ),
+                  if (!availableValues.containsKey('Color'))
+                  // Showing the price and quantity for the selected size
+                    Padding(
+                      padding: EdgeInsets.only(bottom: screenHeight * 0.02, top: screenHeight * 0.02, left: screenHeight * 0.01),
+                      child: availableProperties.any((property) => property.property == 'Size')
+                          ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Sizes:', // Or use the appropriate label
+                            style: TextStyle(fontSize: screenHeight * 0.025, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
-                      ],
+                          SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              for (int i = 0; i < (availableValues['Size'] ?? []).length; i++)
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      selectedSizeIndex = i;
+
+                                      final selectedSize = availableValues['Size']?[selectedSizeIndex] ?? '';
+
+                                      final variant = widget.product.variations.firstWhere((variant) =>
+                                          variant.propertiesAndValues.any((property) =>
+                                          property.property.toLowerCase() == 'size' &&
+                                              property.value.toLowerCase() == selectedSize.toLowerCase()),
+                                      );
+
+                                      if (variant != null) {
+                                        selectedVariationIndex = widget.product.variations.indexOf(variant);
+                                        zero = false;
+                                      } else {
+                                        selectedVariationIndex = -1;
+                                        zero = true;
+                                      }
+                                    });
+                                  },
+                                  child: Container(
+                                    margin: EdgeInsets.symmetric(horizontal: 8.0),
+                                    padding: EdgeInsets.all(12.0),
+                                    decoration: BoxDecoration(
+                                      color: selectedSizeIndex == i ? Colors.lightGreenAccent.shade700 : null,
+                                      border: Border.all(
+                                        color: selectedSizeIndex == i ? Colors.lightGreenAccent.shade700 : Colors.grey,
+                                        width: 2.0,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8.0),
+                                    ),
+                                    child: Text((availableValues['Size'] ?? [])[i], style: TextStyle(
+                                      color: selectedSizeIndex == i ? Colors.black : Colors.white,)),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      )
+                          : SizedBox.shrink(),
                     ),
-                    ]
-                    ):SizedBox.shrink(),
-                  ),
+
+                  if (availableValues.containsKey('Color'))
+                    Padding(
+                      padding: EdgeInsets.only(bottom: screenHeight * 0.02, top: screenHeight * 0.02, left: screenHeight * 0.01),
+                      child: availableProperties.any((property) => property.property == 'Size')
+                          ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Sizes:', // Or use the appropriate label
+                            style: TextStyle(fontSize: screenHeight * 0.025, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                          SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              for (int i = 0; i < (availableValues['Size'] ?? []).length; i++)
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      selectedSizeIndex = i;
+
+                                      // Find the variant that matches selected color and size
+                                      final selectedColor = availableValues['Color']?[selectedColorIndex] ?? '';
+                                      final selectedSize = availableValues['Size']?[selectedSizeIndex] ?? '';
+
+                                      final variant = widget.product.variations.firstWhere((variant) =>
+                                      variant.propertiesAndValues.any((property) =>
+                                      property.property.toLowerCase() == 'color' &&
+                                          property.value.toLowerCase() == selectedColor.toLowerCase()) &&
+                                          variant.propertiesAndValues.any((property) =>
+                                          property.property.toLowerCase() == 'size' &&
+                                              property.value.toLowerCase() == selectedSize.toLowerCase()),
+                                      );
+
+                                      if (variant != null) {
+                                        bool zero = false;
+                                        selectedVariationIndex = widget.product.variations.indexOf(variant);
+                                      } else {
+                                        bool zero = true;
+                                        // If no variant matches, set quantity to 0
+                                        selectedVariationIndex = -1;
+                                      }
+                                    });
+                                  },
+                                  child: Container(
+                                    margin: EdgeInsets.symmetric(horizontal: 8.0),
+                                    padding: EdgeInsets.all(12.0),
+                                    decoration: BoxDecoration(
+                                      color: selectedSizeIndex == i ? Colors.lightGreenAccent.shade700 : null,
+                                      border: Border.all(
+                                        color: selectedSizeIndex == i ? Colors.lightGreenAccent.shade700 : Colors.grey,
+                                        width: 2.0,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8.0),
+                                    ),
+                                    child: Text((availableValues['Size'] ?? [])[i], style: TextStyle(
+                                        color: selectedSizeIndex == i ? Colors.black : Colors.white,fontSize: screenHeight*0.02)),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      )
+                          : SizedBox.shrink(),
+                    ),
 
 
-// Adding buttons for materials
+
                   Padding(
-                    padding: EdgeInsets.only(bottom: screenHeight*0.02, top:screenHeight*0.02, left: screenHeight*0.01),
+                    padding: EdgeInsets.only(bottom: screenHeight * 0.02, top: screenHeight * 0.02, left: screenHeight * 0.01),
                     child: availableProperties.any((property) => property.property == 'Materials')
                         ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                      Text(
-                      'Materials:', // Or use the appropriate label
-                      style: TextStyle(fontSize: screenHeight*0.025, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    SizedBox(height: 8),
-                     Row(
-                       mainAxisAlignment: MainAxisAlignment.center,
+                        Text(
+                          'Materials:', // Or use the appropriate label
+                          style: TextStyle(fontSize: screenHeight * 0.025, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            for (final material in availableValues['Materials'] ?? [])
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    selectedMaterialIndex = availableValues['Materials']?.indexOf(material) ?? -1;
 
-                       children: [
-                        for (final material in availableValues['Materials'] ??
-                            [])
-                          GestureDetector(
-                            onTap: () {
-                              // Handle material button tap
-                            },
-                            child: Container(
-                              margin: EdgeInsets.symmetric(horizontal: 8.0),
-                              padding: EdgeInsets.all(12.0),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: Colors.grey,
-                                  width: 2.0,
+                                    if (!availableValues.containsKey('Color') && !availableValues.containsKey('Size')) {
+                                      // Variant selection logic when Color and Size are not present
+                                      final variant = widget.product.variations.firstWhere((variant) =>
+                                          variant.propertiesAndValues.any((property) =>
+                                          property.property.toLowerCase() == 'materials' &&
+                                              property.value.toLowerCase() == material.toLowerCase()));
+
+                                      if (variant != null) {
+                                        selectedVariationIndex = widget.product.variations.indexOf(variant);
+                                        zero = false;
+                                      } else {
+                                        selectedVariationIndex = -1;
+                                        zero = true;
+                                      }
+                                    } else if (selectedColorIndex != -1 && selectedSizeIndex != -1) {
+                                      // Variant selection logic when Color and Size are present
+                                      final selectedColor = availableValues['Color']?[selectedColorIndex] ?? '';
+                                      final selectedSize = availableValues['Size']?[selectedSizeIndex] ?? '';
+
+                                      final variant = widget.product.variations.firstWhere((variant) =>
+                                      variant.propertiesAndValues.any((property) =>
+                                      property.property.toLowerCase() == 'color' &&
+                                          property.value.toLowerCase() == selectedColor.toLowerCase()) &&
+                                          variant.propertiesAndValues.any((property) =>
+                                          property.property.toLowerCase() == 'size' &&
+                                              property.value.toLowerCase() == selectedSize.toLowerCase()) &&
+                                          variant.propertiesAndValues.any((property) =>
+                                          property.property.toLowerCase() == 'materials' &&
+                                              property.value.toLowerCase() == material.toLowerCase()));
+
+                                      if (variant != null) {
+                                        selectedVariationIndex = widget.product.variations.indexOf(variant);
+                                        zero = false;
+                                      } else {
+                                        selectedVariationIndex = -1;
+                                        zero = true;
+                                      }
+                                    }
+                                  });
+                                },
+                                child: Container(
+                                  margin: EdgeInsets.symmetric(horizontal: 8.0),
+                                  padding: EdgeInsets.all(12.0),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.grey,
+                                      width: 2.0,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8.0),
+                                    color: selectedMaterialIndex == availableValues['Materials']?.indexOf(material)
+                                        ? Colors.lightGreenAccent.shade700// Change the button color when selected
+                                        : null,
+                                  ),
+                                  child: Text(material, style: TextStyle(
+                                      color: selectedMaterialIndex == availableValues['Materials']?.indexOf(material)
+                                          ? Colors.black// Change the button color when selected
+                                          : Colors.white,fontSize: screenHeight*0.02)),
                                 ),
-                                borderRadius: BorderRadius.circular(8.0),
                               ),
-                              child: Text(material, style: TextStyle(color: Colors.white)),
-                            ),
-                          ),
+                          ],
+                        ),
                       ],
+                    )
+                        : SizedBox.shrink(),
+                  ),
+
+                  zero ?
+                  Text(
+                    'Quantity: 0',
+                    style: TextStyle(
+                      fontSize: screenHeight*0.023,
+                      color: Colors.grey.shade400,
                     ),
-                    ]
-                    ):SizedBox.shrink(),
+                  ):
+                  Text(
+                    'Quantity: ${widget.product.variations[selectedVariationIndex].quantity}',
+                    style: TextStyle(
+                      fontSize: screenHeight*0.023,
+                      color: Colors.grey.shade400,
+                    ),
+                  ),
+
+                  Padding(
+                    padding:  EdgeInsets.only(top:screenHeight*0.05),
+                    child: Center(
+                      child: Container(
+                        width: screenWidth*0.9,
+                        height: screenHeight*0.07,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(screenWidth*0.1), // Adjust the value as needed
+                          color: Colors.grey.shade700, // Background color for the collapsed state
+
+                        ),// Background color for the collapsed state
+                        child: ExpansionTile(
+                          title: Text(
+                            'Description',
+                            style: TextStyle(color: Colors.grey.shade300, fontSize: screenHeight*0.025),
+                          ),
+                          backgroundColor: Colors.black12, // Background color for the expanded state
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16.0),
+                              child: Text(
+                                widget.product.description,
+                                style: TextStyle(color: Colors.grey.shade300, fontSize: screenHeight*0.02),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   )
+                  // Text("Description: ${widget.product.description}", style: TextStyle(color: Colors.white)),
                 ]
             )
         )
     );
   }
 }
-//             Padding(
-//               padding: const EdgeInsets.all(8.0),
-//               child: Text(
-//                 widget.product.name,
-//                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-//               ),
-//             ),
-//             // Display variations
-//             SizedBox(
-//               height: 100,
-//               child: ListView.builder(
-//                 scrollDirection: Axis.horizontal,
-//                 itemCount: widget.product.variations.length,
-//                 itemBuilder: (context, index) {
-//                   final variation = widget.product.variations[index];
-//                   return GestureDetector(
-//                     onTap: () {
-//                       setState(() {
-//                         selectedVariationIndex = index;
-//                       });
-//                     },
-//                     child: Container(
-//                       margin: EdgeInsets.all(8),
-//                       width: 80,
-//                       decoration: BoxDecoration(
-//                         border: Border.all(
-//                           color: selectedVariationIndex == index
-//                               ? Colors.blue
-//                               : Colors.grey,
-//                         ),
-//                       ),
-//                       child: Center(child: Text('Variation $index')),
-//                     ),
-//                   );
-//                 },
-//               ),
-//             ),
-//             // Display selected variation details
-//             Padding(
-//               padding: const EdgeInsets.all(8.0),
-//               child: Column(
-//                 children: [
-//                   Text(
-//                     'Price: \$${widget.product.variations[selectedVariationIndex].price.toStringAsFixed(2)}',
-//                     style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold, color: Colors.white),
-//                   ),
-//                   Text(
-//                     'Quantity: ${widget.product.variations[selectedVariationIndex].quantity}',
-//                     style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold, color: Colors.white),
-//                   ),
-//                   Text(
-//                     'Colours: ${widget.product.variations[selectedVariationIndex].propertiesAndValues[0].value}',
-//                     style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold, color: Colors.white),
-//                   ),
-//                 ],
-//               ),
-//
-//             ),
-//             // Display product properties
-//             Padding(
-//               padding: const EdgeInsets.all(8.0),
-//               child: Column(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   Text(
-//                     'Available Properties:',
-//                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-//                   ),
-//                   SizedBox(height: 8),
-//                   // Map through available properties and display them
-//                   ...widget.product.availableProperties.map((property) {
-//                     return Row(
-//                       children: [
-//                         Text('${property.property}: ',
-//                             style: TextStyle(fontWeight: FontWeight.bold)),
-//                         Text(property.value),
-//                       ],
-//                     );
-//                   }).toList(),
-//                 ],
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-//
+
